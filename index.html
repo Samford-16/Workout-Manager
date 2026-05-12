@@ -118,6 +118,32 @@
             </div>
         </section>
 
+        <!-- View switcher -->
+        <div class="view-switcher" role="tablist" aria-label="View mode">
+            <button class="view-tab active" data-view="week" role="tab" aria-selected="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                Week
+            </button>
+            <button class="view-tab" data-view="calendar" role="tab" aria-selected="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Calendar
+            </button>
+        </div>
+
+        <!-- Week view -->
+        <div class="view-pane" id="weekView">
         <!-- Day tabs -->
         <nav class="day-tabs" role="tablist" aria-label="Days of the week">
             <button class="day-tab" data-day="Mon" role="tab">
@@ -234,6 +260,42 @@
                 <p>Add an exercise manually or pull one from the library.</p>
             </div>
         </section>
+        </div><!-- /weekView -->
+
+        <!-- Calendar view -->
+        <div class="view-pane hidden" id="calendarView">
+            <section class="calendar-card">
+                <div class="calendar-header">
+                    <button class="btn btn-icon" id="calPrev" aria-label="Previous month">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <div class="calendar-title-wrap">
+                        <h2 id="calMonthLabel">Month Year</h2>
+                        <button class="btn-link" id="calToday">Today</button>
+                    </div>
+                    <button class="btn btn-icon" id="calNext" aria-label="Next month">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="calendar-legend">
+                    <span class="cal-legend-item"><span class="cal-legend-dot cal-legend-planned"></span> Planned</span>
+                    <span class="cal-legend-item"><span class="cal-legend-dot cal-legend-completed"></span> Completed</span>
+                    <span class="cal-legend-item"><span class="cal-legend-dot cal-legend-rest"></span> Rest day</span>
+                </div>
+
+                <div class="calendar-weekdays">
+                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+
+                <div class="calendar-summary" id="calendarSummary"></div>
+            </section>
+        </div><!-- /calendarView -->
     </main>
 
     <!-- Add / Edit exercise modal -->

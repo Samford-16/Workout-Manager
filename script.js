@@ -66,7 +66,11 @@ let state = {
     history: {},
     editingId: null,
     libraryFilter: 'All',
-    librarySearch: ''
+    librarySearch: '',
+    // Calendar view state
+    currentView: 'week',
+    calendarMonth: new Date().getMonth(),
+    calendarYear: new Date().getFullYear()
 };
 
 // Timer state
@@ -353,6 +357,7 @@ function renderAll() {
     renderDayTabs();
     renderDayPanel();
     renderWeeklyStats();
+    if (state.currentView === 'calendar') renderCalendar();
 }
 
 // ---------- Exercise modal ----------
@@ -936,6 +941,144 @@ function renderHistoryLog() {
     }).join('');
 }
 
+// ---------- View switcher ----------
+function switchView(view) {
+    state.currentView = view;
+    document.querySelectorAll('.view-tab').forEach(tab => {
+        const isActive = tab.dataset.view === view;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', isActive);
+    });
+    document.getElementById('weekView').classList.toggle('hidden', view !== 'week');
+    document.getElementById('calendarView').classList.toggle('hidden', view !== 'calendar');
+    if (view === 'calendar') renderCalendar();
+}
+
+// ---------- Calendar ----------
+// Convert JS Date day-of-week (0=Sun..6=Sat) to our DAY code (Mon..Sun)
+function jsDayToCode(jsDay) {
+    return jsDay === 0 ? 'Sun' : DAYS[jsDay - 1];
+}
+
+// Get unique muscle groups planned for a given weekday code, comma-separated
+function getMusclesForDay(dayCode) {
+    const exs = state.workouts[dayCode];
+    if (!exs || exs.length === 0) return '';
+    const seen = new Set();
+    const ordered = [];
+    exs.forEach(ex => {
+        if (!seen.has(ex.muscle)) {
+            seen.add(ex.muscle);
+            ordered.push(ex.muscle);
+        }
+    });
+    return ordered.join(', ');
+}
+
+function renderCalendar() {
+    const year = state.calendarYear;
+    const month = state.calendarMonth;
+
+    const monthName = new Intl.DateTimeFormat('en-US', {
+        month: 'long', year: 'numeric'
+    }).format(new Date(year, month, 1));
+    document.getElementById('calMonthLabel').textContent = monthName;
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+
+    // Calculate leading empty cells (Monday = first column)
+    // JS getDay: 0=Sun..6=Sat; we want Mon=0..Sun=6
+    const firstDayJs = firstDay.getDay();
+    const leadingEmpty = firstDayJs === 0 ? 6 : firstDayJs - 1;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = dateKey(today);
+
+    let html = '';
+
+    // Leading empty cells
+    for (let i = 0; i < leadingEmpty; i++) {
+        html += '<div class="cal-day empty"></div>';
+    }
+
+    let plannedCount = 0;
+    let completedCount = 0;
+    let restCount = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const cellDate = new Date(year, month, d);
+        cellDate.setHours(0, 0, 0, 0);
+        const dayCode = jsDayToCode(cellDate.getDay());
+        const muscles = getMusclesForDay(dayCode);
+        const exerciseCount = state.workouts[dayCode].length;
+        const keyStr = dateKey(cellDate);
+        const isToday = keyStr === todayStr;
+        const isPast = cellDate < today;
+        const completedExs = state.history[keyStr] || 0;
+        const isCompleted = completedExs > 0;
+
+        // Tally totals
+        if (exerciseCount === 0) restCount++;
+        else plannedCount++;
+        if (isCompleted) completedCount++;
+
+        const classes = ['cal-day'];
+        if (isToday) classes.push('today');
+        if (isPast && !isCompleted) classes.push('past');
+        if (isCompleted) classes.push('completed');
+        if (exerciseCount === 0) classes.push('rest');
+
+        const musclesText = exerciseCount === 0 ? 'Rest' : escapeHtml(muscles);
+        const badge = isCompleted ? '<span class="cal-day-badge" title="Completed"></span>' : '';
+
+        html += `
+            <button class="${classes.join(' ')}" data-day-code="${dayCode}" data-date="${keyStr}" aria-label="${dayCode} ${d}">
+                ${badge}
+                <span class="cal-day-number">${d}</span>
+                <span class="cal-day-muscles">${musclesText}</span>
+            </button>
+        `;
+    }
+
+    document.getElementById('calendarGrid').innerHTML = html;
+
+    // Summary footer
+    document.getElementById('calendarSummary').innerHTML = `
+        <div class="cal-summary-stat">
+            <span class="cal-summary-label">Planned days</span>
+            <span class="cal-summary-value">${plannedCount}</span>
+        </div>
+        <div class="cal-summary-stat">
+            <span class="cal-summary-label">Completed</span>
+            <span class="cal-summary-value">${completedCount}</span>
+        </div>
+        <div class="cal-summary-stat">
+            <span class="cal-summary-label">Rest days</span>
+            <span class="cal-summary-value">${restCount}</span>
+        </div>
+    `;
+}
+
+function changeMonth(delta) {
+    let m = state.calendarMonth + delta;
+    let y = state.calendarYear;
+    if (m < 0) { m = 11; y--; }
+    if (m > 11) { m = 0; y++; }
+    state.calendarMonth = m;
+    state.calendarYear = y;
+    renderCalendar();
+}
+
+function jumpToToday() {
+    const now = new Date();
+    state.calendarMonth = now.getMonth();
+    state.calendarYear = now.getFullYear();
+    renderCalendar();
+}
+
 // ---------- Print ----------
 function buildPrintExerciseHtml(ex) {
     const parts = [];
@@ -1176,6 +1319,25 @@ function attachEvents() {
 
     // Streak button → open history modal
     document.getElementById('streakBtn').addEventListener('click', openHistoryModal);
+
+    // View switcher
+    document.querySelectorAll('.view-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchView(tab.dataset.view));
+    });
+
+    // Calendar navigation
+    document.getElementById('calPrev').addEventListener('click', () => changeMonth(-1));
+    document.getElementById('calNext').addEventListener('click', () => changeMonth(1));
+    document.getElementById('calToday').addEventListener('click', jumpToToday);
+
+    // Calendar day click → jump to that weekday's plan
+    document.getElementById('calendarGrid').addEventListener('click', (e) => {
+        const cell = e.target.closest('.cal-day[data-day-code]');
+        if (!cell) return;
+        state.currentDay = cell.dataset.dayCode;
+        switchView('week');
+        renderAll();
+    });
 
     // Copy day grid (delegate)
     document.getElementById('copyDayGrid').addEventListener('click', (e) => {
