@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitTrack — Weekly Workout Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="brand">
+                <div class="brand-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6.5 6.5 17.5 17.5"></path>
+                        <path d="m21 21-1-1"></path>
+                        <path d="m3 3 1 1"></path>
+                        <path d="m18 22 4-4"></path>
+                        <path d="m2 6 4-4"></path>
+                        <path d="m3 10 7-7"></path>
+                        <path d="m14 21 7-7"></path>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>FitTrack</h1>
+                    <p>Weekly workout planner</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="menu-wrap">
+                    <button id="dataMenuBtn" class="btn btn-icon" aria-label="Data menu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                            <circle cx="12" cy="12" r="1"></circle>
+                            <circle cx="12" cy="5" r="1"></circle>
+                            <circle cx="12" cy="19" r="1"></circle>
+                        </svg>
+                    </button>
+                    <div class="dropdown" id="dataMenu" role="menu">
+                        <button class="dropdown-item" id="exportBtn" role="menuitem">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export data
+                        </button>
+                        <button class="dropdown-item" id="importBtn" role="menuitem">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Import data
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item danger" id="resetWeekBtn" role="menuitem">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                            </svg>
+                            Reset week
+                        </button>
+                    </div>
+                </div>
+                <button id="libraryBtn" class="btn btn-ghost" aria-label="Open exercise library">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+                    </svg>
+                    Library
+                </button>
+                <button id="themeToggle" class="btn btn-icon" aria-label="Toggle dark mode">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                        <circle cx="12" cy="12" r="4"></circle>
+                        <path d="M12 2v2"></path><path d="M12 20v2"></path>
+                        <path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path>
+                        <path d="M2 12h2"></path><path d="M20 12h2"></path>
+                        <path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Weekly stats -->
+        <section class="stats-card">
+            <div class="stats-row">
+                <div class="stat">
+                    <span class="stat-label">Weekly progress</span>
+                    <span class="stat-value" id="weeklyPercent">0%</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Completed</span>
+                    <span class="stat-value"><span id="weeklyDone">0</span> / <span id="weeklyTotal">0</span></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Active days</span>
+                    <span class="stat-value"><span id="activeDays">0</span> / 7</span>
+                </div>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="weeklyBar"></div>
+            </div>
+        </section>
+
+        <!-- Day tabs -->
+        <nav class="day-tabs" role="tablist" aria-label="Days of the week">
+            <button class="day-tab" data-day="Mon" role="tab">
+                <span class="day-short">Mon</span>
+                <span class="day-count" data-count="Mon">0</span>
+            </button>
+            <button class="day-tab" data-day="Tue" role="tab">
+                <span class="day-short">Tue</span>
+                <span class="day-count" data-count="Tue">0</span>
+            </button>
+            <button class="day-tab" data-day="Wed" role="tab">
+                <span class="day-short">Wed</span>
+                <span class="day-count" data-count="Wed">0</span>
+            </button>
+            <button class="day-tab" data-day="Thu" role="tab">
+                <span class="day-short">Thu</span>
+                <span class="day-count" data-count="Thu">0</span>
+            </button>
+            <button class="day-tab" data-day="Fri" role="tab">
+                <span class="day-short">Fri</span>
+                <span class="day-count" data-count="Fri">0</span>
+            </button>
+            <button class="day-tab" data-day="Sat" role="tab">
+                <span class="day-short">Sat</span>
+                <span class="day-count" data-count="Sat">0</span>
+            </button>
+            <button class="day-tab" data-day="Sun" role="tab">
+                <span class="day-short">Sun</span>
+                <span class="day-count" data-count="Sun">0</span>
+            </button>
+        </nav>
+
+        <!-- Day panel -->
+        <section class="day-panel" aria-live="polite">
+            <div class="day-header">
+                <div class="day-header-text">
+                    <h2 id="currentDay">Monday</h2>
+                    <p class="day-sub" id="daySub">No exercises yet — add one to get started.</p>
+                </div>
+                <div class="day-header-actions">
+                    <div class="menu-wrap">
+                        <button id="dayMenuBtn" class="btn btn-ghost" aria-label="Day actions">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                <circle cx="12" cy="12" r="1"></circle>
+                                <circle cx="19" cy="12" r="1"></circle>
+                                <circle cx="5" cy="12" r="1"></circle>
+                            </svg>
+                            Actions
+                        </button>
+                        <div class="dropdown" id="dayMenu" role="menu">
+                            <button class="dropdown-item" id="copyDayBtn" role="menuitem">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                Copy day to...
+                            </button>
+                            <button class="dropdown-item danger" id="clearDayBtn" role="menuitem">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                                </svg>
+                                Clear day
+                            </button>
+                        </div>
+                    </div>
+                    <button id="addExerciseBtn" class="btn btn-primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                            <path d="M12 5v14"></path><path d="M5 12h14"></path>
+                        </svg>
+                        Add exercise
+                    </button>
+                </div>
+            </div>
+
+            <div class="day-progress">
+                <div class="progress-track small">
+                    <div class="progress-fill" id="dayBar"></div>
+                </div>
+                <span class="day-progress-text" id="dayProgressText">0%</span>
+            </div>
+
+            <ul id="exerciseList" class="exercise-list"></ul>
+
+            <div id="emptyState" class="empty-state">
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32">
+                        <path d="m6.5 6.5 11 11"></path>
+                        <path d="m21 21-1-1"></path>
+                        <path d="m3 3 1 1"></path>
+                        <path d="m18 22 4-4"></path>
+                        <path d="m2 6 4-4"></path>
+                    </svg>
+                </div>
+                <h3>Nothing planned yet</h3>
+                <p>Add an exercise manually or pull one from the library.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Add / Edit exercise modal -->
+    <div class="modal-backdrop" id="exerciseModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add exercise</h2>
+                <button class="btn btn-icon close-btn" data-close-modal aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                        <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <label for="exName">Exercise name</label>
+                    <input type="text" id="exName" placeholder="e.g. Bench Press" autocomplete="off">
+                </div>
+                <div class="form-row">
+                    <label for="exMuscle">Muscle group</label>
+                    <select id="exMuscle">
+                        <option value="Chest">Chest</option>
+                        <option value="Back">Back</option>
+                        <option value="Legs">Legs</option>
+                        <option value="Shoulders">Shoulders</option>
+                        <option value="Arms">Arms</option>
+                        <option value="Core">Core</option>
+                        <option value="Cardio">Cardio</option>
+                        <option value="Full Body">Full Body</option>
+                    </select>
+                </div>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label for="exSets">Sets</label>
+                        <input type="number" id="exSets" min="0" step="1" value="3">
+                    </div>
+                    <div class="form-row">
+                        <label for="exReps">Reps</label>
+                        <input type="number" id="exReps" min="0" step="1" value="10">
+                    </div>
+                    <div class="form-row">
+                        <label for="exWeight">Weight (lbs)</label>
+                        <input type="number" id="exWeight" min="0" step="2.5" value="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label for="exNotes">Notes</label>
+                    <textarea id="exNotes" rows="3" placeholder="Form cues, RPE, rest time..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" data-close-modal>Cancel</button>
+                <button class="btn btn-primary" id="saveExerciseBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exercise library modal -->
+    <div class="modal-backdrop" id="libraryModal" role="dialog" aria-modal="true" aria-labelledby="libraryTitle">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h2 id="libraryTitle">Exercise library</h2>
+                <button class="btn btn-icon close-btn" data-close-modal aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                        <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="library-controls">
+                    <div class="search-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+                        <input type="text" id="librarySearch" placeholder="Search exercises...">
+                    </div>
+                    <div class="filter-chips" id="filterChips">
+                        <button class="chip active" data-filter="All">All</button>
+                        <button class="chip" data-filter="Chest">Chest</button>
+                        <button class="chip" data-filter="Back">Back</button>
+                        <button class="chip" data-filter="Legs">Legs</button>
+                        <button class="chip" data-filter="Shoulders">Shoulders</button>
+                        <button class="chip" data-filter="Arms">Arms</button>
+                        <button class="chip" data-filter="Core">Core</button>
+                        <button class="chip" data-filter="Cardio">Cardio</button>
+                    </div>
+                </div>
+                <ul id="libraryList" class="library-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Copy day modal -->
+    <div class="modal-backdrop" id="copyDayModal" role="dialog" aria-modal="true" aria-labelledby="copyDayTitle">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="copyDayTitle">Copy day to...</h2>
+                <button class="btn btn-icon close-btn" data-close-modal aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                        <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="copy-intro" id="copyIntro">Select a day to copy these exercises to:</p>
+                <div class="copy-day-grid" id="copyDayGrid"></div>
+                <p class="copy-warn">Existing exercises on the selected day will be replaced.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rest timer overlay -->
+    <div class="timer-overlay" id="timerOverlay" role="dialog" aria-modal="true" aria-labelledby="timerExName">
+        <div class="timer-card">
+            <div class="timer-header">
+                <span class="timer-label">Rest timer</span>
+                <button class="btn btn-icon close-btn" id="timerCloseBtn" aria-label="Close timer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                        <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="timer-exname" id="timerExName">Exercise</div>
+            <div class="timer-display">
+                <svg class="timer-ring" viewBox="0 0 120 120">
+                    <circle class="timer-ring-bg" cx="60" cy="60" r="54"></circle>
+                    <circle class="timer-ring-fg" id="timerRingFg" cx="60" cy="60" r="54"></circle>
+                </svg>
+                <span class="timer-text" id="timerText">1:30</span>
+            </div>
+            <div class="timer-presets">
+                <button class="chip timer-preset" data-secs="60">60s</button>
+                <button class="chip timer-preset active" data-secs="90">90s</button>
+                <button class="chip timer-preset" data-secs="120">2 min</button>
+                <button class="chip timer-preset" data-secs="180">3 min</button>
+            </div>
+            <div class="timer-controls">
+                <button class="btn btn-ghost" id="timerResetBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                    Reset
+                </button>
+                <button class="btn btn-primary timer-start" id="timerStartBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                        <polygon points="6 3 20 12 6 21 6 3"></polygon>
+                    </svg>
+                    Start
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
