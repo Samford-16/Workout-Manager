@@ -62,6 +62,8 @@ let state = {
     workouts: {
         Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: []
     },
+    // Map of "YYYY-MM-DD" -> number of exercises completed on that date
+    history: {},
     editingId: null,
     libraryFilter: 'All',
     librarySearch: ''
@@ -83,6 +85,9 @@ function loadState() {
         if (raw) {
             const saved = JSON.parse(raw);
             if (saved.workouts) state.workouts = { ...state.workouts, ...saved.workouts };
+            if (saved.history && typeof saved.history === 'object') {
+                state.history = saved.history;
+            }
         }
     } catch (e) {
         console.warn('Failed to load saved data:', e);
@@ -93,7 +98,8 @@ function saveState() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
             version: DATA_VERSION,
-            workouts: state.workouts
+            workouts: state.workouts,
+            history: state.history
         }));
     } catch (e) {
         console.warn('Failed to save data:', e);
@@ -147,6 +153,73 @@ function formatTime(seconds) {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// ---------- Date / history helpers ----------
+function todayKey() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function dateKey(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function logWorkoutToday() {
+    const key = todayKey();
+    state.history[key] = (state.history[key] || 0) + 1;
+}
+
+// Calculate current streak: consecutive days ending today or yesterday
+function calculateStreak() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let streak = 0;
+    let cursor = new Date(today);
+
+    // If today has no workout, check if yesterday does (allow today to be in-progress)
+    if (!state.history[dateKey(cursor)]) {
+        cursor.setDate(cursor.getDate() - 1);
+        if (!state.history[dateKey(cursor)]) return 0;
+    }
+
+    // Count backwards while we have consecutive days
+    while (state.history[dateKey(cursor)]) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+}
+
+function calculateLongestStreak() {
+    const dates = Object.keys(state.history).sort();
+    if (dates.length === 0) return 0;
+
+    let longest = 1;
+    let current = 1;
+    for (let i = 1; i < dates.length; i++) {
+        const prev = new Date(dates[i - 1]);
+        const curr = new Date(dates[i]);
+        const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+            current++;
+            longest = Math.max(longest, current);
+        } else {
+            current = 1;
+        }
+    }
+    return longest;
+}
+
+function totalWorkoutDays() {
+    return Object.keys(state.history).length;
 }
 
 // ---------- Rendering ----------
@@ -270,6 +343,10 @@ function renderWeeklyStats() {
     document.getElementById('weeklyTotal').textContent = total;
     document.getElementById('activeDays').textContent = activeDays;
     document.getElementById('weeklyBar').style.width = `${pct}%`;
+
+    const streak = calculateStreak();
+    document.getElementById('streakCount').textContent = streak;
+    document.getElementById('streakFlame').classList.toggle('active', streak > 0);
 }
 
 function renderAll() {
@@ -493,7 +570,8 @@ function exportData() {
     const data = {
         version: DATA_VERSION,
         exported: new Date().toISOString(),
-        workouts: state.workouts
+        workouts: state.workouts,
+        history: state.history
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -541,6 +619,16 @@ function importData(file) {
             if (!confirm('Import will replace your current week. Continue?')) return;
 
             state.workouts = validated;
+            // Import history if present and valid
+            if (data.history && typeof data.history === 'object') {
+                const importedHistory = {};
+                Object.keys(data.history).forEach(k => {
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(k) && typeof data.history[k] === 'number') {
+                        importedHistory[k] = data.history[k];
+                    }
+                });
+                state.history = importedHistory;
+            }
             saveState();
             renderAll();
             showToast('Data imported');
@@ -754,7 +842,172 @@ function cleanupDrag() {
     dragSrcId = null;
 }
 
-// ---------- Dropdown menus ----------
+// ---------- Workout history modal ----------
+function openHistoryModal() {
+    renderHistoryModal();
+    document.getElementById('historyModal').classList.add('open');
+}
+
+function renderHistoryModal() {
+    const streak = calculateStreak();
+    const longest = calculateLongestStreak();
+    const total = totalWorkoutDays();
+
+    document.getElementById('histCurrentStreak').textContent = streak;
+    document.getElementById('histLongestStreak').textContent = longest;
+    document.getElementById('histTotalWorkouts').textContent = total;
+    document.getElementById('histStreakPlural').textContent = streak === 1 ? '' : 's';
+    document.getElementById('histLongestPlural').textContent = longest === 1 ? '' : 's';
+
+    renderHeatmap();
+    renderHistoryLog();
+}
+
+function renderHeatmap() {
+    const heatmap = document.getElementById('historyHeatmap');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKeyStr = dateKey(today);
+
+    // Find the most recent Monday (or today if Monday)
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday
+    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const thisMonday = new Date(today);
+    thisMonday.setDate(today.getDate() - daysSinceMonday);
+
+    // Go back 11 weeks for 12 weeks total
+    const startDate = new Date(thisMonday);
+    startDate.setDate(thisMonday.getDate() - 11 * 7);
+
+    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+
+    // Build grid: 7 rows (days of week) x 13 cols (12 weeks + label column)
+    // We iterate row by row
+    let html = '';
+    for (let row = 0; row < 7; row++) {
+        html += `<span class="heatmap-day-label">${dayLabels[row]}</span>`;
+        for (let week = 0; week < 12; week++) {
+            const cellDate = new Date(startDate);
+            cellDate.setDate(startDate.getDate() + week * 7 + row);
+
+            // Don't render cells after today
+            if (cellDate > today) {
+                html += `<span class="heatmap-cell heatmap-empty"></span>`;
+                continue;
+            }
+
+            const key = dateKey(cellDate);
+            const count = state.history[key] || 0;
+            const isToday = key === todayKeyStr;
+            const tooltip = `${monthFormatter.format(cellDate)} · ${count} exercise${count === 1 ? '' : 's'}`;
+            html += `<span class="heatmap-cell ${count > 0 ? 'active' : ''} ${isToday ? 'today' : ''}" data-tooltip="${tooltip}"></span>`;
+        }
+    }
+    heatmap.innerHTML = html;
+}
+
+function renderHistoryLog() {
+    const log = document.getElementById('historyLog');
+    const entries = Object.entries(state.history)
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .slice(0, 20); // last 20 entries
+
+    if (entries.length === 0) {
+        log.innerHTML = '<li class="history-empty">No completed workouts yet. Check off some exercises to start your streak.</li>';
+        return;
+    }
+
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long', month: 'short', day: 'numeric'
+    });
+
+    log.innerHTML = entries.map(([date, count]) => {
+        const [y, m, d] = date.split('-').map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const isToday = date === todayKey();
+        const label = isToday ? 'Today' : formatter.format(dateObj);
+        return `
+            <li class="history-log-item">
+                <span class="history-log-date">${label}</span>
+                <span class="history-log-count">${count} exercise${count === 1 ? '' : 's'} completed</span>
+            </li>
+        `;
+    }).join('');
+}
+
+// ---------- Print ----------
+function buildPrintExerciseHtml(ex) {
+    const parts = [];
+    if (ex.sets > 0 && ex.reps > 0) parts.push(`${ex.sets} × ${ex.reps}`);
+    if (ex.weight > 0) parts.push(`${ex.weight} lbs`);
+    const stats = parts.length ? `<span class="print-exercise-stats">${escapeHtml(parts.join(' · '))}</span>` : '<span></span>';
+    const notes = ex.notes
+        ? `<div class="print-exercise-notes">Note: ${escapeHtml(ex.notes)}</div>`
+        : '';
+    return `
+        <li class="print-exercise">
+            <span class="print-checkbox ${ex.done ? 'checked' : ''}"></span>
+            <div>
+                <span class="print-exercise-name">${escapeHtml(ex.name)}</span>
+                <span class="print-exercise-muscle">— ${escapeHtml(ex.muscle)}</span>
+                ${notes}
+            </div>
+            ${stats}
+        </li>
+    `;
+}
+
+function buildPrintDayHtml(day) {
+    const exercises = state.workouts[day];
+    const done = exercises.filter(e => e.done).length;
+    const meta = exercises.length > 0
+        ? `${exercises.length} exercise${exercises.length === 1 ? '' : 's'} · ${done} completed`
+        : 'Rest day';
+
+    const exercisesHtml = exercises.length === 0
+        ? '<div class="print-day-empty">No exercises planned.</div>'
+        : `<ul class="print-exercises">${exercises.map(buildPrintExerciseHtml).join('')}</ul>`;
+
+    return `
+        <section class="print-day">
+            <div class="print-day-header">
+                <h2>${FULL_DAY_NAMES[day]}</h2>
+                <span class="print-day-meta">${meta}</span>
+            </div>
+            ${exercisesHtml}
+        </section>
+    `;
+}
+
+function printDay(dayOnly = false) {
+    const root = document.getElementById('printRoot');
+    const dateStr = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+    }).format(new Date());
+
+    const days = dayOnly ? [state.currentDay] : DAYS;
+    const subtitle = dayOnly
+        ? `${FULL_DAY_NAMES[state.currentDay]} workout · ${dateStr}`
+        : `Weekly workout plan · ${dateStr}`;
+
+    root.innerHTML = `
+        <div class="print-header">
+            <h1>FitTrack</h1>
+            <div class="print-subtitle">${escapeHtml(subtitle)}</div>
+        </div>
+        ${days.map(buildPrintDayHtml).join('')}
+        <div class="print-footer">Generated by FitTrack · ${escapeHtml(dateStr)}</div>
+    `;
+
+    // Print runs synchronously; cleanup after
+    window.print();
+
+    // Clear out after print to keep DOM tidy
+    setTimeout(() => { root.innerHTML = ''; }, 100);
+}
+
+
 function toggleDropdown(menuId) {
     const menu = document.getElementById(menuId);
     const wasOpen = menu.classList.contains('open');
@@ -813,6 +1066,8 @@ function attachEvents() {
             const ex = state.workouts[state.currentDay].find(x => x.id === id);
             if (ex) {
                 ex.done = !ex.done;
+                // Log to history only when marking as done (not when un-checking)
+                if (ex.done) logWorkoutToday();
                 saveState();
                 renderAll();
             }
@@ -906,10 +1161,21 @@ function attachEvents() {
         closeAllDropdowns();
         openCopyDay();
     });
+    document.getElementById('printDayBtn').addEventListener('click', () => {
+        closeAllDropdowns();
+        printDay(true);
+    });
+    document.getElementById('printWeekBtn').addEventListener('click', () => {
+        closeAllDropdowns();
+        printDay(false);
+    });
     document.getElementById('clearDayBtn').addEventListener('click', () => {
         closeAllDropdowns();
         clearDay();
     });
+
+    // Streak button → open history modal
+    document.getElementById('streakBtn').addEventListener('click', openHistoryModal);
 
     // Copy day grid (delegate)
     document.getElementById('copyDayGrid').addEventListener('click', (e) => {

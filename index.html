@@ -103,6 +103,15 @@
                     <span class="stat-label">Active days</span>
                     <span class="stat-value"><span id="activeDays">0</span> / 7</span>
                 </div>
+                <button class="stat stat-button" id="streakBtn" aria-label="View workout history">
+                    <span class="stat-label">Streak <svg class="stat-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
+                    <span class="stat-value">
+                        <span class="streak-flame" id="streakFlame">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
+                        </span>
+                        <span id="streakCount">0</span>
+                    </span>
+                </button>
             </div>
             <div class="progress-track">
                 <div class="progress-fill" id="weeklyBar"></div>
@@ -166,6 +175,24 @@
                                 </svg>
                                 Copy day to...
                             </button>
+                            <button class="dropdown-item" id="printDayBtn" role="menuitem">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                    <rect x="6" y="14" width="12" height="8"></rect>
+                                </svg>
+                                Print this day
+                            </button>
+                            <button class="dropdown-item" id="printWeekBtn" role="menuitem">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                Print full week
+                            </button>
+                            <div class="dropdown-divider"></div>
                             <button class="dropdown-item danger" id="clearDayBtn" role="menuitem">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                                     <path d="M3 6h18"></path>
@@ -361,6 +388,59 @@
             </div>
         </div>
     </div>
+
+    <!-- Workout history modal -->
+    <div class="modal-backdrop" id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h2 id="historyTitle">Workout history</h2>
+                <button class="btn btn-icon close-btn" data-close-modal aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                        <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="history-stats">
+                    <div class="history-stat">
+                        <span class="history-stat-label">Current streak</span>
+                        <span class="history-stat-value">
+                            <span class="streak-flame-lg">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
+                            </span>
+                            <span id="histCurrentStreak">0</span>
+                            <span class="history-stat-suffix">day<span id="histStreakPlural">s</span></span>
+                        </span>
+                    </div>
+                    <div class="history-stat">
+                        <span class="history-stat-label">Longest streak</span>
+                        <span class="history-stat-value"><span id="histLongestStreak">0</span> <span class="history-stat-suffix">day<span id="histLongestPlural">s</span></span></span>
+                    </div>
+                    <div class="history-stat">
+                        <span class="history-stat-label">Total workouts</span>
+                        <span class="history-stat-value" id="histTotalWorkouts">0</span>
+                    </div>
+                </div>
+
+                <div class="history-section-title">
+                    <h3>Last 12 weeks</h3>
+                    <span class="history-legend">
+                        <span class="legend-cell"></span> none
+                        <span class="legend-cell legend-cell-active"></span> workout
+                    </span>
+                </div>
+                <div class="history-heatmap" id="historyHeatmap"></div>
+
+                <div class="history-section-title">
+                    <h3>Recent activity</h3>
+                </div>
+                <ul class="history-log" id="historyLog"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden print container — populated on demand -->
+    <div id="printRoot" class="print-only"></div>
 
     <!-- Hidden file input for import -->
     <input type="file" id="importFile" accept="application/json,.json" style="display:none">
