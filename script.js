@@ -64,6 +64,8 @@ let state = {
     },
     // Map of "YYYY-MM-DD" -> number of exercises completed on that date
     history: {},
+    // User-created exercises saved to library
+    customLibrary: [],
     editingId: null,
     libraryFilter: 'All',
     librarySearch: '',
@@ -92,6 +94,9 @@ function loadState() {
             if (saved.history && typeof saved.history === 'object') {
                 state.history = saved.history;
             }
+            if (Array.isArray(saved.customLibrary)) {
+                state.customLibrary = saved.customLibrary;
+            }
         }
     } catch (e) {
         console.warn('Failed to load saved data:', e);
@@ -103,7 +108,8 @@ function saveState() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
             version: DATA_VERSION,
             workouts: state.workouts,
-            history: state.history
+            history: state.history,
+            customLibrary: state.customLibrary
         }));
     } catch (e) {
         console.warn('Failed to save data:', e);
@@ -385,6 +391,8 @@ function openExerciseModal(exerciseId = null) {
         document.getElementById('exWeight').value = 0;
         document.getElementById('exNotes').value = '';
     }
+    // Always reset the save-to-library checkbox
+    document.getElementById('exSaveToLibrary').checked = false;
 
     modal.classList.add('open');
     setTimeout(() => document.getElementById('exName').focus(), 50);
@@ -393,6 +401,28 @@ function openExerciseModal(exerciseId = null) {
 function closeAllModals() {
     document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
     state.editingId = null;
+}
+
+function saveToCustomLibrary(data) {
+    // Combined list — built-in + existing custom — for duplicate check
+    const combined = [...EXERCISE_LIBRARY, ...state.customLibrary];
+    const exists = combined.some(e =>
+        e.name.toLowerCase() === data.name.toLowerCase()
+    );
+    if (exists) {
+        showToast(`"${data.name}" is already in the library`);
+        return false;
+    }
+    state.customLibrary.push({
+        name: data.name,
+        muscle: data.muscle,
+        sets: data.sets,
+        reps: data.reps,
+        weight: data.weight,
+        notes: data.notes || '',
+        custom: true
+    });
+    return true;
 }
 
 function saveExercise() {
@@ -412,12 +442,16 @@ function saveExercise() {
         notes: document.getElementById('exNotes').value.trim()
     };
 
+    const saveToLib = document.getElementById('exSaveToLibrary').checked;
+    let libSaved = false;
+    if (saveToLib) libSaved = saveToCustomLibrary(data);
+
     if (state.editingId) {
         const list = state.workouts[state.currentDay];
         const idx = list.findIndex(e => e.id === state.editingId);
         if (idx !== -1) {
             list[idx] = { ...list[idx], ...data };
-            showToast('Exercise updated');
+            showToast(libSaved ? 'Exercise updated · Saved to library' : 'Exercise updated');
         }
     } else {
         state.workouts[state.currentDay].push({
@@ -425,7 +459,7 @@ function saveExercise() {
             ...data,
             done: false
         });
-        showToast('Exercise added');
+        showToast(libSaved ? 'Exercise added · Saved to library' : 'Exercise added');
     }
 
     saveState();
@@ -450,32 +484,68 @@ function renderLibrary() {
     const search = state.librarySearch.toLowerCase();
     const filter = state.libraryFilter;
 
-    const filtered = EXERCISE_LIBRARY.filter(ex => {
-        if (filter !== 'All' && ex.muscle !== filter) return false;
+    // Combine built-in + custom (custom first so they're easy to find)
+    const customMarked = state.customLibrary.map(e => ({ ...e, custom: true }));
+    const builtInMarked = EXERCISE_LIBRARY.map(e => ({ ...e, custom: false }));
+    const combined = [...customMarked, ...builtInMarked];
+
+    const filtered = combined.filter(ex => {
+        if (filter === 'Custom') {
+            if (!ex.custom) return false;
+        } else if (filter !== 'All' && ex.muscle !== filter) {
+            return false;
+        }
         if (search && !ex.name.toLowerCase().includes(search)) return false;
         return true;
     });
 
     if (filtered.length === 0) {
-        list.innerHTML = '<li class="library-empty">No exercises match your search.</li>';
+        const msg = filter === 'Custom'
+            ? 'No custom exercises yet. Create one and check "Save to library" to add it here.'
+            : 'No exercises match your search.';
+        list.innerHTML = `<li class="library-empty">${msg}</li>`;
         return;
     }
+
+    const customBadge = `
+        <span class="lib-custom-badge">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="9" height="9"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z"/></svg>
+            Mine
+        </span>`;
+
+    const deleteBtn = `
+        <button class="lib-delete" data-action="delete-custom" aria-label="Remove from library" title="Remove from library">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        </button>`;
 
     list.innerHTML = filtered.map(ex => `
         <li class="library-item">
             <div class="lib-info">
-                <span class="lib-name">${escapeHtml(ex.name)}</span>
+                <span class="lib-name">${escapeHtml(ex.name)}${ex.custom ? customBadge : ''}</span>
                 <span class="lib-muscle">${escapeHtml(ex.muscle)}</span>
             </div>
-            <button class="add-from-lib" data-lib-name="${escapeHtml(ex.name)}">
-                Add to ${FULL_DAY_NAMES[state.currentDay]}
-            </button>
+            <div class="library-item-actions">
+                ${ex.custom ? deleteBtn : ''}
+                <button class="add-from-lib" data-lib-name="${escapeHtml(ex.name)}" data-custom="${ex.custom ? '1' : '0'}">
+                    Add to ${FULL_DAY_NAMES[state.currentDay]}
+                </button>
+            </div>
         </li>
     `).join('');
 }
 
-function addFromLibrary(name) {
-    const template = EXERCISE_LIBRARY.find(e => e.name === name);
+function addFromLibrary(name, fromCustom) {
+    // Check custom first if flag indicates so, then fall back to built-in
+    const source = fromCustom ? state.customLibrary : EXERCISE_LIBRARY;
+    let template = source.find(e => e.name === name);
+    // Fallback in case the flag is missing
+    if (!template) {
+        template = [...state.customLibrary, ...EXERCISE_LIBRARY].find(e => e.name === name);
+    }
     if (!template) return;
     state.workouts[state.currentDay].push({
         id: uid(),
@@ -490,6 +560,14 @@ function addFromLibrary(name) {
     saveState();
     renderAll();
     showToast(`Added to ${FULL_DAY_NAMES[state.currentDay]}`);
+}
+
+function deleteCustomExercise(name) {
+    if (!confirm(`Remove "${name}" from your library? This won't affect any workouts that already use it.`)) return;
+    state.customLibrary = state.customLibrary.filter(e => e.name !== name);
+    saveState();
+    renderLibrary();
+    showToast('Removed from library');
 }
 
 // ---------- Copy day ----------
@@ -576,7 +654,8 @@ function exportData() {
         version: DATA_VERSION,
         exported: new Date().toISOString(),
         workouts: state.workouts,
-        history: state.history
+        history: state.history,
+        customLibrary: state.customLibrary
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -633,6 +712,20 @@ function importData(file) {
                     }
                 });
                 state.history = importedHistory;
+            }
+            // Import custom library if present and valid
+            if (Array.isArray(data.customLibrary)) {
+                state.customLibrary = data.customLibrary
+                    .filter(e => e && typeof e.name === 'string' && e.name.trim())
+                    .map(e => ({
+                        name: String(e.name),
+                        muscle: String(e.muscle || 'Full Body'),
+                        sets: parseInt(e.sets) || 0,
+                        reps: parseInt(e.reps) || 0,
+                        weight: parseFloat(e.weight) || 0,
+                        notes: String(e.notes || ''),
+                        custom: true
+                    }));
             }
             saveState();
             renderAll();
@@ -1237,8 +1330,15 @@ function attachEvents() {
 
     // Library list (delegate)
     document.getElementById('libraryList').addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-lib-name]');
-        if (btn) addFromLibrary(btn.dataset.libName);
+        const deleteBtn = e.target.closest('[data-action="delete-custom"]');
+        if (deleteBtn) {
+            const item = deleteBtn.closest('.library-item');
+            const addBtn = item ? item.querySelector('[data-lib-name]') : null;
+            if (addBtn) deleteCustomExercise(addBtn.dataset.libName);
+            return;
+        }
+        const addBtn = e.target.closest('[data-lib-name]');
+        if (addBtn) addFromLibrary(addBtn.dataset.libName, addBtn.dataset.custom === '1');
     });
 
     // Library search

@@ -345,6 +345,18 @@
                     <label for="exNotes">Notes</label>
                     <textarea id="exNotes" rows="3" placeholder="Form cues, RPE, rest time..."></textarea>
                 </div>
+                <label class="form-checkbox" for="exSaveToLibrary">
+                    <input type="checkbox" id="exSaveToLibrary">
+                    <span class="form-checkbox-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </span>
+                    <span class="form-checkbox-text">
+                        <span class="form-checkbox-title">Save to library</span>
+                        <span class="form-checkbox-sub">Make this exercise reusable on other days</span>
+                    </span>
+                </label>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-ghost" data-close-modal>Cancel</button>
@@ -375,6 +387,10 @@
                     </div>
                     <div class="filter-chips" id="filterChips">
                         <button class="chip active" data-filter="All">All</button>
+                        <button class="chip chip-custom" data-filter="Custom">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z"/></svg>
+                            My exercises
+                        </button>
                         <button class="chip" data-filter="Chest">Chest</button>
                         <button class="chip" data-filter="Back">Back</button>
                         <button class="chip" data-filter="Legs">Legs</button>
