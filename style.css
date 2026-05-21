@@ -661,7 +661,7 @@ input, select, textarea {
     border-radius: var(--radius);
     padding: 1rem 1.1rem;
     display: grid;
-    grid-template-columns: auto auto 1fr auto;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 0.9rem;
     transition: border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
@@ -704,30 +704,50 @@ input, select, textarea {
     box-shadow: inset 0 -3px 0 0 var(--accent);
 }
 
-/* Checkbox */
-.ex-checkbox {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    border: 2px solid var(--border-strong);
+/* Per-set checkboxes */
+.ex-sets {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin-top: 0.55rem;
+    align-items: center;
+}
+.ex-set {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border-strong);
+    background: var(--bg-elev);
     display: grid;
     place-items: center;
-    transition: all 0.15s ease;
+    transition: all 0.12s ease;
     flex-shrink: 0;
+    cursor: pointer;
+    padding: 0;
 }
-.ex-checkbox:hover { border-color: var(--accent); }
-.ex-checkbox.checked {
+.ex-set:hover {
+    border-color: var(--accent);
+    transform: scale(1.05);
+}
+.ex-set:active { transform: scale(0.95); }
+.ex-set.checked {
     background: var(--accent);
     border-color: var(--accent);
 }
-.ex-checkbox svg {
+.ex-set svg {
     width: 14px;
     height: 14px;
     color: var(--accent-text);
     opacity: 0;
-    transition: opacity 0.15s ease;
+    transition: opacity 0.12s ease;
 }
-.ex-checkbox.checked svg { opacity: 1; }
+.ex-set.checked svg { opacity: 1; }
+.ex-sets-overflow {
+    font-size: 0.7rem;
+    color: var(--text-mute);
+    font-weight: 500;
+    margin-left: 0.2rem;
+}
 
 .ex-info { min-width: 0; }
 .ex-name {
@@ -1002,13 +1022,12 @@ input, select, textarea {
 }
 .lib-delete svg { width: 15px; height: 15px; }
 
-.library-controls{
+/* ============ LIBRARY ============ */
     margin-bottom: 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
 }
-
 .search-wrap {
     position: relative;
 }
@@ -1475,6 +1494,7 @@ input, select, textarea {
     .ex-actions,
     .ex-drag,
     .ex-checkbox,
+    .ex-sets,
     .modal-backdrop,
     .timer-overlay,
     .toast,
@@ -1544,7 +1564,7 @@ input, select, textarea {
     }
     .print-exercise {
         display: grid;
-        grid-template-columns: 14px 1fr auto;
+        grid-template-columns: auto 1fr auto;
         gap: 0.5rem;
         align-items: baseline;
         padding: 0.35rem 0;
@@ -1552,6 +1572,11 @@ input, select, textarea {
         font-size: 11pt;
     }
     .print-exercise:last-child { border-bottom: none; }
+    .print-checkboxes {
+        display: inline-flex;
+        gap: 3pt;
+        align-items: center;
+    }
     .print-checkbox {
         width: 11pt;
         height: 11pt;
@@ -1560,6 +1585,7 @@ input, select, textarea {
         display: inline-block;
         position: relative;
         top: 1pt;
+        flex-shrink: 0;
     }
     .print-checkbox.checked::after {
         content: '✓';
@@ -1644,16 +1670,16 @@ input, select, textarea {
     .day-header-actions .btn { flex: 1; justify-content: center; }
 
     .exercise-item {
-        grid-template-columns: auto auto 1fr;
+        grid-template-columns: 1fr;
         gap: 0.7rem;
     }
     .ex-actions {
-        grid-column: 1 / -1;
         justify-content: flex-end;
         border-top: 1px solid var(--border);
         padding-top: 0.5rem;
         margin-top: 0.25rem;
     }
+    .ex-set { width: 28px; height: 28px; } /* larger tap target on mobile */
     .ex-drag { display: none; } /* Drag-and-drop is desktop-friendly */
 
     .form-grid { grid-template-columns: 1fr 1fr; }

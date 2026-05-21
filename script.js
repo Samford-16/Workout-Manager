@@ -151,6 +151,32 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// ---------- Per-set completion helpers ----------
+// Normalize an exercise's completion state. Exercises now track setsCompleted
+// (a count), but older saved data may still have the boolean `done` flag.
+function setsCompletedFor(ex) {
+    if (typeof ex.setsCompleted === 'number') return ex.setsCompleted;
+    if (ex.done) return ex.sets || 0;
+    return 0;
+}
+
+function isExerciseDone(ex) {
+    const total = ex.sets || 0;
+    if (total === 0) return Boolean(ex.done) || Boolean(ex.setsCompleted);
+    return setsCompletedFor(ex) >= total;
+}
+
+// Mutates the exercise in place. Returns whether the exercise *transitioned*
+// from not-done to done as a result of this change (used to fire history log).
+function setExerciseCompletion(ex, newCount) {
+    const total = ex.sets || 0;
+    const wasDone = isExerciseDone(ex);
+    const clamped = Math.max(0, Math.min(newCount, total || 1));
+    ex.setsCompleted = clamped;
+    ex.done = total === 0 ? clamped > 0 : clamped >= total;
+    return !wasDone && isExerciseDone(ex);
+}
+
 function showToast(msg) {
     const toast = document.getElementById('toast');
     toast.textContent = msg;
@@ -260,7 +286,7 @@ function renderDayPanel() {
         daySub.textContent = 'No exercises yet — add one to get started.';
     } else {
         emptyState.classList.add('hidden');
-        const done = exercises.filter(e => e.done).length;
+        const done = exercises.filter(isExerciseDone).length;
         daySub.textContent = `${exercises.length} exercise${exercises.length === 1 ? '' : 's'} · ${done} completed`;
         list.innerHTML = exercises.map(ex => renderExercise(ex)).join('');
     }
@@ -278,8 +304,40 @@ function renderExercise(ex) {
         ? `<div class="ex-notes">${escapeHtml(ex.notes)}</div>`
         : '';
 
+    const total = ex.sets || 0;
+    const completed = setsCompletedFor(ex);
+    const done = isExerciseDone(ex);
+
+    // Build the set-checkbox row, or fall back to a single checkbox if sets === 0
+    let setsRow;
+    if (total === 0) {
+        setsRow = `
+            <div class="ex-sets" role="group" aria-label="Mark as done">
+                <button class="ex-set ${done ? 'checked' : ''}" data-action="toggle-set" data-set-index="0" aria-label="Mark exercise complete" title="Mark complete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
+            </div>`;
+    } else {
+        // Cap at 10 to prevent overflow on very high-set exercises
+        const visibleSets = Math.min(total, 10);
+        let boxes = '';
+        for (let i = 0; i < visibleSets; i++) {
+            const isChecked = i < completed;
+            boxes += `
+                <button class="ex-set ${isChecked ? 'checked' : ''}" data-action="toggle-set" data-set-index="${i}" aria-label="Set ${i + 1} of ${total}" title="Set ${i + 1}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>`;
+        }
+        const overflow = total > 10 ? `<span class="ex-sets-overflow">+${total - 10}</span>` : '';
+        setsRow = `<div class="ex-sets" role="group" aria-label="Sets completed">${boxes}${overflow}</div>`;
+    }
+
     return `
-        <li class="exercise-item ${ex.done ? 'done' : ''}" data-id="${ex.id}" draggable="true">
+        <li class="exercise-item ${done ? 'done' : ''}" data-id="${ex.id}" draggable="true">
             <span class="ex-drag" aria-label="Drag to reorder" title="Drag to reorder">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="9" cy="6" r="1"></circle>
@@ -290,17 +348,13 @@ function renderExercise(ex) {
                     <circle cx="15" cy="18" r="1"></circle>
                 </svg>
             </span>
-            <button class="ex-checkbox ${ex.done ? 'checked' : ''}" data-action="toggle" aria-label="Mark as done">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-            </button>
             <div class="ex-info">
                 <div class="ex-name">${escapeHtml(ex.name)}</div>
                 <div class="ex-meta">
                     <span class="ex-tag">${escapeHtml(ex.muscle)}</span>
                     ${stats}
                 </div>
+                ${setsRow}
                 ${notes}
             </div>
             <div class="ex-actions">
@@ -331,7 +385,7 @@ function renderExercise(ex) {
 function renderDayProgress() {
     const exercises = state.workouts[state.currentDay];
     const total = exercises.length;
-    const done = exercises.filter(e => e.done).length;
+    const done = exercises.filter(isExerciseDone).length;
     const pct = total === 0 ? 0 : Math.round((done / total) * 100);
 
     document.getElementById('dayBar').style.width = `${pct}%`;
@@ -344,7 +398,7 @@ function renderWeeklyStats() {
         const exercises = state.workouts[day];
         if (exercises.length > 0) activeDays++;
         total += exercises.length;
-        done += exercises.filter(e => e.done).length;
+        done += exercises.filter(isExerciseDone).length;
     });
     const pct = total === 0 ? 0 : Math.round((done / total) * 100);
 
@@ -457,7 +511,8 @@ function saveExercise() {
         state.workouts[state.currentDay].push({
             id: uid(),
             ...data,
-            done: false
+            done: false,
+            setsCompleted: 0
         });
         showToast(libSaved ? 'Exercise added · Saved to library' : 'Exercise added');
     }
@@ -555,7 +610,8 @@ function addFromLibrary(name, fromCustom) {
         reps: template.reps,
         weight: template.weight,
         notes: template.notes || '',
-        done: false
+        done: false,
+            setsCompleted: 0
     });
     saveState();
     renderAll();
@@ -605,7 +661,8 @@ function copyDayTo(targetDay) {
     state.workouts[targetDay] = state.workouts[sourceDay].map(ex => ({
         ...ex,
         id: uid(),
-        done: false
+        done: false,
+            setsCompleted: 0
     }));
 
     saveState();
@@ -693,7 +750,10 @@ function importData(file) {
                         reps: parseInt(ex.reps) || 0,
                         weight: parseFloat(ex.weight) || 0,
                         notes: String(ex.notes || ''),
-                        done: Boolean(ex.done)
+                        done: Boolean(ex.done),
+                        setsCompleted: typeof ex.setsCompleted === 'number'
+                            ? Math.max(0, Math.floor(ex.setsCompleted))
+                            : (ex.done ? (parseInt(ex.sets) || 0) : 0)
                     }));
                 } else {
                     validated[day] = [];
@@ -1181,9 +1241,22 @@ function buildPrintExerciseHtml(ex) {
     const notes = ex.notes
         ? `<div class="print-exercise-notes">Note: ${escapeHtml(ex.notes)}</div>`
         : '';
+
+    // Per-set checkboxes for print
+    const total = ex.sets || 0;
+    const completed = setsCompletedFor(ex);
+    let setBoxes = '';
+    if (total === 0) {
+        setBoxes = `<span class="print-checkbox ${isExerciseDone(ex) ? 'checked' : ''}"></span>`;
+    } else {
+        for (let i = 0; i < total; i++) {
+            setBoxes += `<span class="print-checkbox ${i < completed ? 'checked' : ''}"></span>`;
+        }
+    }
+
     return `
         <li class="print-exercise">
-            <span class="print-checkbox ${ex.done ? 'checked' : ''}"></span>
+            <span class="print-checkboxes">${setBoxes}</span>
             <div>
                 <span class="print-exercise-name">${escapeHtml(ex.name)}</span>
                 <span class="print-exercise-muscle">— ${escapeHtml(ex.muscle)}</span>
@@ -1196,7 +1269,7 @@ function buildPrintExerciseHtml(ex) {
 
 function buildPrintDayHtml(day) {
     const exercises = state.workouts[day];
-    const done = exercises.filter(e => e.done).length;
+    const done = exercises.filter(isExerciseDone).length;
     const meta = exercises.length > 0
         ? `${exercises.length} exercise${exercises.length === 1 ? '' : 's'} · ${done} completed`
         : 'Rest day';
@@ -1298,14 +1371,40 @@ function attachEvents() {
         const id = item.dataset.id;
         const action = actionBtn.dataset.action;
 
-        if (action === 'toggle') {
+        if (action === 'toggle-set') {
             const ex = state.workouts[state.currentDay].find(x => x.id === id);
-            if (ex) {
-                ex.done = !ex.done;
-                // Log to history only when marking as done (not when un-checking)
-                if (ex.done) logWorkoutToday();
-                saveState();
-                renderAll();
+            if (!ex) return;
+
+            const total = ex.sets || 0;
+            const setIndex = parseInt(actionBtn.dataset.setIndex);
+            const currentCompleted = setsCompletedFor(ex);
+
+            // Click set N: if set N+1 is already checked, this *uncheck*s sets >= N.
+            // Otherwise this checks all sets up to and including N (the natural "tap the next set" flow).
+            let newCount;
+            if (setIndex < currentCompleted) {
+                // Tapping an already-checked set unchecks back down to (but not including) it
+                newCount = setIndex;
+            } else {
+                newCount = setIndex + 1;
+            }
+
+            const wasNotDone = !isExerciseDone(ex);
+            const becameDone = setExerciseCompletion(ex, newCount);
+            const isNowDone = isExerciseDone(ex);
+
+            // Log to history only when the exercise *transitions* into done
+            if (becameDone) logWorkoutToday();
+
+            saveState();
+            renderAll();
+
+            // Auto-start rest timer when a set was checked (not unchecked) and the
+            // exercise isn't complete yet — no point resting after your last set.
+            const setWasChecked = newCount > currentCompleted;
+            if (setWasChecked && wasNotDone && !isNowDone && total > 0) {
+                openTimer(id);
+                startTimer();
             }
         } else if (action === 'edit') {
             openExerciseModal(id);
