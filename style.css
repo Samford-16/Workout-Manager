@@ -600,7 +600,7 @@ input, select, textarea {
     color: var(--text);
 }
 
-
+/* ============ DAY PANEL ============ */
 .day-panel {
     background: var(--bg-elev);
     border: 1px solid var(--border);
@@ -994,10 +994,6 @@ input, select, textarea {
     vertical-align: 1px;
 }
 .lib-custom-badge svg { flex-shrink: 0; }
-[data-theme="dark"] .lib-custom-badge {
-    color: var(--accent);
-    background: var(--accent-soft);
-}
 
 .library-item-actions {
     display: flex;
@@ -1023,6 +1019,7 @@ input, select, textarea {
 .lib-delete svg { width: 15px; height: 15px; }
 
 /* ============ LIBRARY ============ */
+.library-controls {
     margin-bottom: 1rem;
     display: flex;
     flex-direction: column;
@@ -1306,14 +1303,16 @@ input, select, textarea {
     font-size: 0.875rem;
     font-weight: 500;
     box-shadow: var(--shadow-lg);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
     z-index: 100;
     pointer-events: none;
     max-width: calc(100vw - 2rem);
     text-align: center;
+    opacity: 0;
 }
 .toast.show {
     transform: translateX(-50%) translateY(0);
+    opacity: 1;
 }
 
 /* ============ HISTORY MODAL ============ */
@@ -1493,7 +1492,6 @@ input, select, textarea {
     .day-progress,
     .ex-actions,
     .ex-drag,
-    .ex-checkbox,
     .ex-sets,
     .modal-backdrop,
     .timer-overlay,
@@ -1632,7 +1630,6 @@ input, select, textarea {
 
     @page { margin: 0.5in; }
 }
-
 
 @keyframes fadeIn {
     from { opacity: 0; }

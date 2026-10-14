@@ -193,11 +193,7 @@ function formatTime(seconds) {
 
 // ---------- Date / history helpers ----------
 function todayKey() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return dateKey(new Date());
 }
 
 function dateKey(date) {
@@ -458,7 +454,7 @@ function closeAllModals() {
 }
 
 function saveToCustomLibrary(data) {
-    // Combined list — built-in + existing custom — for duplicate check
+    // Combined list (built-in + existing custom) for duplicate check
     const combined = [...EXERCISE_LIBRARY, ...state.customLibrary];
     const exists = combined.some(e =>
         e.name.toLowerCase() === data.name.toLowerCase()
@@ -611,7 +607,7 @@ function addFromLibrary(name, fromCustom) {
         weight: template.weight,
         notes: template.notes || '',
         done: false,
-            setsCompleted: 0
+        setsCompleted: 0
     });
     saveState();
     renderAll();
@@ -662,7 +658,7 @@ function copyDayTo(targetDay) {
         ...ex,
         id: uid(),
         done: false,
-            setsCompleted: 0
+        setsCompleted: 0
     }));
 
     saveState();
@@ -717,9 +713,8 @@ function exportData() {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const date = new Date().toISOString().split('T')[0];
     a.href = url;
-    a.download = `fittrack-backup-${date}.json`;
+    a.download = `fittrack-backup-${todayKey()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -737,7 +732,7 @@ function importData(file) {
                 throw new Error('Invalid file format');
             }
 
-            // Validate structure — each day should be an array
+            // Validate structure: each day should be an array
             const validated = {};
             DAYS.forEach(day => {
                 const arr = data.workouts[day];
@@ -822,7 +817,7 @@ function beep(freq = 880, duration = 0.15, type = 'sine') {
         osc.start(now);
         osc.stop(now + duration);
     } catch (e) {
-        // Audio not available — fail silently
+        // Audio not available, fail silently
     }
 }
 
@@ -1316,7 +1311,7 @@ function printDay(dayOnly = false) {
     setTimeout(() => { root.innerHTML = ''; }, 100);
 }
 
-
+// ---------- Dropdowns ----------
 function toggleDropdown(menuId) {
     const menu = document.getElementById(menuId);
     const wasOpen = menu.classList.contains('open');
@@ -1379,11 +1374,10 @@ function attachEvents() {
             const setIndex = parseInt(actionBtn.dataset.setIndex);
             const currentCompleted = setsCompletedFor(ex);
 
-            // Click set N: if set N+1 is already checked, this *uncheck*s sets >= N.
-            // Otherwise this checks all sets up to and including N (the natural "tap the next set" flow).
+            // Tapping an unchecked set checks every set up to and including it.
+            // Tapping an already-checked set unchecks it and every set after it.
             let newCount;
             if (setIndex < currentCompleted) {
-                // Tapping an already-checked set unchecks back down to (but not including) it
                 newCount = setIndex;
             } else {
                 newCount = setIndex + 1;
@@ -1400,7 +1394,7 @@ function attachEvents() {
             renderAll();
 
             // Auto-start rest timer when a set was checked (not unchecked) and the
-            // exercise isn't complete yet — no point resting after your last set.
+            // exercise isn't complete yet. No point resting after your last set.
             const setWasChecked = newCount > currentCompleted;
             if (setWasChecked && wasNotDone && !isNowDone && total > 0) {
                 openTimer(id);
@@ -1516,7 +1510,7 @@ function attachEvents() {
         clearDay();
     });
 
-    // Streak button → open history modal
+    // Streak button opens history modal
     document.getElementById('streakBtn').addEventListener('click', openHistoryModal);
 
     // View switcher
@@ -1529,7 +1523,7 @@ function attachEvents() {
     document.getElementById('calNext').addEventListener('click', () => changeMonth(1));
     document.getElementById('calToday').addEventListener('click', jumpToToday);
 
-    // Calendar day click → jump to that weekday's plan
+    // Calendar day click jumps to that weekday's plan
     document.getElementById('calendarGrid').addEventListener('click', (e) => {
         const cell = e.target.closest('.cal-day[data-day-code]');
         if (!cell) return;
@@ -1554,7 +1548,7 @@ function attachEvents() {
         btn.addEventListener('click', () => setTimerDuration(parseInt(btn.dataset.secs)));
     });
 
-    // Escape closes modals & timer
+    // Escape closes modals and timer
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeAllModals();
